@@ -1,0 +1,19 @@
+{
+  "system": {
+    "enable": "Looting System Enabled",
+    "disable": "Looting System Disabled"
+  },
+  "target": {
+    "label": "Loot Dead Ped",
+    "icon": "fas fa-skull-crossbones"
+  },
+  "command": {
+    "toggle_description": "Toggle ped looting system (On/Off)"
+  },
+  "notifications": {
+    "received_cash": "Found $%{amount} cash",
+    "received_item": "Found %{item}",
+    "already_looted": "This corpse has already been looted",
+    "no_loot": "Found nothing valuable"
+  }
+}
