@@ -1,7 +1,7 @@
---[[ ===================================================== ]]--
---[[       DSRP Loot Peds - QBCore/qs-inventory Compatible        ]]--
---[[         Original by MaDHouSe - Adapted for DSRP      ]]--
---[[ ===================================================== ]]--
+--[[
+    dps-lootpeds Server
+    State Bag Synced Looting with Model-Specific Loot Tables
+]]
 
 local systemEnabled = Config.EnableOnStart
 
@@ -9,188 +9,345 @@ local systemEnabled = Config.EnableOnStart
 -- HELPER FUNCTIONS
 -- ═══════════════════════════════════════════════════════
 
----Get random item from table
----@param tbl table
----@return any
-local function getRandomItem(tbl)
-    if not tbl or #tbl == 0 then return nil end
-    return tbl[math.random(1, #tbl)]
-end
-
----Check if percentage chance succeeds
----@param chance number
+---Roll a percentage chance
+---@param chance number 0-100
 ---@return boolean
 local function rollChance(chance)
     return math.random(1, 100) <= chance
 end
 
----Give item to player using qs-inventory
----@param source number
----@param item string
----@param amount number
----@return boolean
-local function giveItem(source, item, amount)
-    local success = exports['qs-inventory']:AddItem(source, item, amount or 1)
-    if success then
-        lib.notify(source, {
-            title = 'Found Item',
-            description = locale('notifications.received_item', { item = item }),
-            type = 'success'
-        })
-    end
-    return success
+---Get random value between min and max
+---@param min number
+---@param max number
+---@return number
+local function getRandomAmount(min, max)
+    if min == max then return min end
+    return math.random(min, max)
 end
 
----Give money to player
----@param source number
----@param amount number
----@return boolean
-local function giveMoney(source, amount)
-    local Player = exports['qb-core']:GetPlayer(source)
-    if not Player then return false end
+---Determine ped category from model name
+---@param modelName string
+---@return string category name
+local function getPedCategory(modelName)
+    if not modelName then return 'default' end
 
-    Player.Functions.AddMoney(Config.Cash.Type, amount, 'ped-looting')
-    lib.notify(source, {
-        title = 'Found Cash',
-        description = locale('notifications.received_cash', { amount = amount }),
-        type = 'success'
-    })
-    return true
+    modelName = string.lower(modelName)
+
+    for categoryName, categoryData in pairs(Config.PedCategories) do
+        if categoryData.patterns then
+            for _, pattern in ipairs(categoryData.patterns) do
+                if string.find(modelName, pattern, 1, true) then
+                    Bridge.Debug('Ped', modelName, 'matched category:', categoryName)
+                    return categoryName
+                end
+            end
+        end
+    end
+
+    return 'default'
+end
+
+---Get loot table for a category
+---@param category string
+---@return table
+local function getLootTable(category)
+    return Config.PedCategories[category] or Config.PedCategories.default
 end
 
 -- ═══════════════════════════════════════════════════════
--- LOOT GENERATION SYSTEM
+-- LOOT GENERATION
 -- ═══════════════════════════════════════════════════════
 
 ---Generate and give loot to player
 ---@param source number
+---@param pedModel string
 ---@param netId number
-local function generateLoot(source, netId)
-    local Player = exports['qb-core']:GetPlayer(source)
-    if not Player then return end
+local function generateLoot(source, pedModel, netId)
+    local player = Bridge.GetPlayer(source)
+    if not player then return end
 
     local lootGiven = false
+    local category = getPedCategory(pedModel)
+    local lootTable = getLootTable(category)
 
-    -- Delete ped for all clients
-    TriggerClientEvent('dsrp-lootpeds:client:deletePed', -1, netId)
+    Bridge.Debug('Generating loot for category:', category)
+
+    -- Mark ped as looted via State Bag (synced to all clients)
+    if Config.UseStateBags and netId and netId > 0 then
+        local ped = NetworkGetEntityFromNetworkId(netId)
+        if DoesEntityExist(ped) then
+            Entity(ped).state:set('isLooted', true, true)
+            Entity(ped).state:set('lootedBy', Bridge.GetPlayerIdentifier(source), true)
+            Entity(ped).state:set('lootedAt', os.time(), true)
+        end
+    end
+
+    -- Delete ped if configured
+    if Config.DeletePedsWhenLooted then
+        TriggerClientEvent('dps-lootpeds:client:deletePed', -1, netId)
+    end
 
     -- CASH LOOT
-    if Config.UseCash and rollChance(Config.Chances.Cash) then
-        local cashAmount = math.random(Config.Cash.Min, Config.Cash.Max)
-        giveMoney(source, cashAmount)
-        lootGiven = true
-    end
+    if lootTable.cash and rollChance(lootTable.cash.chance) then
+        local cashAmount = getRandomAmount(lootTable.cash.min, lootTable.cash.max)
 
-    -- BASIC ITEMS
-    if Config.UseBasicItems and rollChance(Config.Chances.BasicItem) then
-        local item = getRandomItem(Config.Items.Basic)
-        if item then
-            giveItem(source, item, 1)
-            lootGiven = true
+        if Config.Cash.Dirty then
+            -- Give dirty money as item
+            if Bridge.AddItem(source, Config.Cash.DirtyItem, cashAmount) then
+                Bridge.Notify(source, 'Found Cash', 'Found $' .. cashAmount .. ' (dirty)', 'success')
+                lootGiven = true
+            end
+        else
+            -- Give clean money
+            if Bridge.AddMoney(source, Config.Cash.Type, cashAmount, 'ped-looting') then
+                Bridge.Notify(source, 'Found Cash', 'Found $' .. cashAmount, 'success')
+                lootGiven = true
+            end
         end
     end
 
-    -- AMMO
-    if Config.UseAmmo and rollChance(Config.Chances.Ammo) then
-        local ammo = getRandomItem(Config.Items.Ammo)
-        if ammo then
-            giveItem(source, ammo, math.random(1, 3))
-            lootGiven = true
+    -- ITEM LOOT
+    if lootTable.loot then
+        for _, lootEntry in ipairs(lootTable.loot) do
+            if rollChance(lootEntry.chance) then
+                local amount = 1
+                if lootEntry.amount then
+                    amount = getRandomAmount(lootEntry.amount[1], lootEntry.amount[2])
+                end
+
+                if Bridge.AddItem(source, lootEntry.item, amount) then
+                    Bridge.Notify(source, 'Found Item', 'Found ' .. lootEntry.item .. ' x' .. amount, 'success')
+                    lootGiven = true
+                end
+            end
         end
     end
 
-    -- NORMAL WEAPONS
-    if Config.UseNormalWeapons and rollChance(Config.Chances.NormalWeapon) then
-        local weapon = getRandomItem(Config.Items.NormalWeapons)
-        if weapon then
-            giveItem(source, weapon, 1)
-            lootGiven = true
-        end
-    end
-
-    -- HEAVY WEAPONS
-    if Config.UseHeavyWeapons and rollChance(Config.Chances.HeavyWeapon) then
-        local weapon = getRandomItem(Config.Items.HeavyWeapons)
-        if weapon then
-            giveItem(source, weapon, 1)
-            lootGiven = true
-        end
-    end
-
-    -- No loot found notification
+    -- No loot found
     if not lootGiven then
-        lib.notify(source, {
-            title = 'No Loot',
-            description = locale('notifications.no_loot'),
-            type = 'inform'
-        })
+        Bridge.Notify(source, 'No Loot', 'Found nothing valuable', 'inform')
     end
+
+    -- Police alert (if configured)
+    if Config.PoliceIntegration.enabled and Config.PoliceIntegration.alertOnLoot then
+        TriggerPoliceAlert(source, netId)
+    end
+
+    -- Evidence system (if configured)
+    if Config.Evidence.enabled then
+        LeaveEvidence(source, netId)
+    end
+
+    Bridge.Debug('Loot generated for player:', source, 'Category:', category, 'Items given:', lootGiven)
 end
+
+-- ═══════════════════════════════════════════════════════
+-- POLICE INTEGRATION
+-- ═══════════════════════════════════════════════════════
+
+---Count online police
+---@return number
+local function getOnlinePolice()
+    local count = 0
+    for _, playerId in ipairs(GetPlayers()) do
+        local src = tonumber(playerId)
+        if Bridge.HasJob(src, Config.PoliceIntegration.policeJobs) then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+---Trigger police alert for looting
+---@param source number
+---@param netId number
+function TriggerPoliceAlert(source, netId)
+    if not Config.PoliceIntegration.enabled then return end
+
+    -- Check minimum police online
+    if getOnlinePolice() < Config.PoliceIntegration.minPoliceOnline then return end
+
+    -- Roll for alert chance
+    if not rollChance(Config.PoliceIntegration.alertChance) then return end
+
+    -- Get player coords via client callback
+    lib.callback('dps-lootpeds:client:getCoords', source, function(coords)
+        if not coords then return end
+
+        -- Try qs-dispatch
+        if Bridge.Resources.dispatch then
+            TriggerEvent('qs-dispatch:server:CreateDispatchCall', {
+                job = 'police',
+                callLocation = coords,
+                callCode = { code = '10-31', flash = false },
+                message = 'Body Looting',
+                description = 'Suspicious activity - someone is looting a dead body',
+                units = {},
+                time = 10,
+                blip = {
+                    sprite = 161,
+                    scale = 1.0,
+                    colour = 1,
+                    flashes = false,
+                    text = 'Body Looting',
+                    time = 120
+                }
+            })
+        else
+            -- Fallback: notify police directly
+            for _, playerId in ipairs(GetPlayers()) do
+                local src = tonumber(playerId)
+                if Bridge.HasJob(src, Config.PoliceIntegration.policeJobs) then
+                    Bridge.Notify(src, '10-31 Report', 'Suspicious activity reported - possible body looting', 'inform', 10000)
+                end
+            end
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════
+-- EVIDENCE SYSTEM
+-- ═══════════════════════════════════════════════════════
+
+---Leave evidence when looting
+---@param source number
+---@param netId number
+function LeaveEvidence(source, netId)
+    if not Config.Evidence.enabled then return end
+    if not Bridge.Resources.evidence then return end
+
+    lib.callback('dps-lootpeds:client:getCoords', source, function(coords)
+        if not coords then return end
+
+        -- Try ps-evidence
+        if Config.Evidence.fingerprints then
+            TriggerEvent('ps-evidence:server:CreateFingerprint', source, coords)
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════
+-- SERVER CALLBACKS
+-- ═══════════════════════════════════════════════════════
+
+-- Check if ped is looted (State Bag verification)
+lib.callback.register('dps-lootpeds:server:isPedLooted', function(source, netId)
+    if not netId or netId <= 0 then return true end
+
+    local ped = NetworkGetEntityFromNetworkId(netId)
+    if not DoesEntityExist(ped) then return true end
+
+    local state = Entity(ped).state
+    return state.isLooted == true
+end)
+
+-- Check restrictions before looting
+lib.callback.register('dps-lootpeds:server:canLoot', function(source)
+    -- Check job restriction
+    if Config.Restrictions.jobRestricted then
+        if not Bridge.HasJob(source, Config.Restrictions.allowedJobs) then
+            return false, 'job_restricted'
+        end
+    end
+
+    -- Check required item
+    if Config.Restrictions.requireItem then
+        if not Bridge.HasItem(source, Config.Restrictions.requiredItem) then
+            return false, 'need_item'
+        end
+
+        -- Consume item if configured
+        if Config.Restrictions.consumeItem then
+            Bridge.RemoveItem(source, Config.Restrictions.requiredItem, 1)
+        end
+    end
+
+    return true, nil
+end)
 
 -- ═══════════════════════════════════════════════════════
 -- EVENTS
 -- ═══════════════════════════════════════════════════════
 
 ---Handle loot request from client
-RegisterNetEvent('dsrp-lootpeds:server:loot', function(netId)
+RegisterNetEvent('dps-lootpeds:server:loot', function(netId, pedModel)
     local source = source
     if not systemEnabled then return end
 
-    generateLoot(source, netId)
+    -- Validate netId
+    if not netId or netId <= 0 then
+        Bridge.Debug('Invalid netId from source:', source)
+        return
+    end
+
+    -- Check if already looted (State Bag)
+    if Config.UseStateBags then
+        local ped = NetworkGetEntityFromNetworkId(netId)
+        if DoesEntityExist(ped) then
+            local state = Entity(ped).state
+            if state.isLooted then
+                Bridge.Notify(source, 'Already Looted', 'This body has already been searched', 'warning')
+                return
+            end
+        end
+    end
+
+    generateLoot(source, pedModel, netId)
 end)
 
 ---Enable looting system
-RegisterNetEvent('dsrp-lootpeds:server:enable', function()
+RegisterNetEvent('dps-lootpeds:server:enable', function()
+    local source = source
+
+    -- Permission check
+    if Config.AdminOnly then
+        local player = Bridge.GetPlayer(source)
+        -- Add your admin check here
+    end
+
     systemEnabled = true
-    TriggerClientEvent('dsrp-lootpeds:client:enable', -1)
+    TriggerClientEvent('dps-lootpeds:client:enable', -1)
+    Bridge.Debug('System enabled by:', source)
 end)
 
 ---Disable looting system
-RegisterNetEvent('dsrp-lootpeds:server:disable', function()
+RegisterNetEvent('dps-lootpeds:server:disable', function()
+    local source = source
+
+    -- Permission check
+    if Config.AdminOnly then
+        local player = Bridge.GetPlayer(source)
+        -- Add your admin check here
+    end
+
     systemEnabled = false
-    TriggerClientEvent('dsrp-lootpeds:client:disable', -1)
+    TriggerClientEvent('dps-lootpeds:client:disable', -1)
+    Bridge.Debug('System disabled by:', source)
 end)
 
 -- ═══════════════════════════════════════════════════════
 -- COMMANDS
 -- ═══════════════════════════════════════════════════════
 
----Toggle looting system on/off
 lib.addCommand(Config.Commands.toggle, {
-    help = locale('command.toggle_description'),
+    help = 'Toggle ped looting system (on/off)',
     params = {
-        {
-            name = 'state',
-            type = 'string',
-            help = 'On or Off'
-        }
+        { name = 'state', type = 'string', help = 'on or off' }
     },
     restricted = Config.AdminOnly and 'group.admin' or false
 }, function(source, args)
-    local state = args.state and string.lower(args.state) or nil
+    local state = args.state and string.lower(args.state)
 
     if state == 'on' then
         systemEnabled = true
-        TriggerClientEvent('dsrp-lootpeds:client:enable', -1)
-        lib.notify(source, {
-            title = 'Looting System',
-            description = 'Ped looting has been ENABLED',
-            type = 'success'
-        })
+        TriggerClientEvent('dps-lootpeds:client:enable', -1)
+        Bridge.Notify(source, 'Loot System', 'Ped looting ENABLED', 'success')
     elseif state == 'off' then
         systemEnabled = false
-        TriggerClientEvent('dsrp-lootpeds:client:disable', -1)
-        lib.notify(source, {
-            title = 'Looting System',
-            description = 'Ped looting has been DISABLED',
-            type = 'inform'
-        })
+        TriggerClientEvent('dps-lootpeds:client:disable', -1)
+        Bridge.Notify(source, 'Loot System', 'Ped looting DISABLED', 'inform')
     else
-        lib.notify(source, {
-            title = 'Invalid Argument',
-            description = 'Usage: /' .. Config.Commands.toggle .. ' [On/Off]',
-            type = 'error'
-        })
+        Bridge.Notify(source, 'Usage', '/' .. Config.Commands.toggle .. ' [on/off]', 'error')
     end
 end)
 
@@ -198,23 +355,22 @@ end)
 -- INITIALIZATION
 -- ═══════════════════════════════════════════════════════
 
----Resource start handler
 AddEventHandler('onResourceStart', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
 
-    -- Sync system state with all clients
+    -- Sync state
     if systemEnabled then
-        TriggerClientEvent('dsrp-lootpeds:client:enable', -1)
+        TriggerClientEvent('dps-lootpeds:client:enable', -1)
     else
-        TriggerClientEvent('dsrp-lootpeds:client:disable', -1)
+        TriggerClientEvent('dps-lootpeds:client:disable', -1)
     end
 
-    print('^2[DSRP Loot Peds]^7 v2.0.0 started successfully')
-    print('^2[DSRP Loot Peds]^7 System is ' .. (systemEnabled and '^2ENABLED^7' or '^1DISABLED^7'))
+    print('^2[dps-lootpeds]^7 v3.0.0 started')
+    print('^2[dps-lootpeds]^7 State Bags: ' .. (Config.UseStateBags and '^2ENABLED' or '^1DISABLED') .. '^7')
+    print('^2[dps-lootpeds]^7 System: ' .. (systemEnabled and '^2ENABLED' or '^1DISABLED') .. '^7')
 end)
 
----Resource stop handler
 AddEventHandler('onResourceStop', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
-    print('^2[DSRP Loot Peds]^7 Resource stopped')
+    print('^2[dps-lootpeds]^7 Resource stopped')
 end)

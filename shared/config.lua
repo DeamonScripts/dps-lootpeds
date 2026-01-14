@@ -1,7 +1,7 @@
---[[ ===================================================== ]]--
---[[       DSRP Loot Peds - QBox/ox_lib Compatible        ]]--
---[[         Original by MaDHouSe - Adapted for DSRP      ]]--
---[[ ===================================================== ]]--
+--[[
+    dps-lootpeds Configuration
+    Model-Specific Loot Tables with State Bag Support
+]]
 
 Config = {}
 
@@ -9,216 +9,267 @@ Config = {}
 -- GENERAL SETTINGS
 -- ═══════════════════════════════════════════════════════
 
-Config.Locale = 'en' -- Language (must match locales/*.json)
+Config.Debug = false
+Config.Locale = 'en'
 
 -- System Behavior
-Config.EnableOnStart = true         -- Enable looting when server starts
-Config.DeletePedsWhenLooted = true  -- Remove corpses after looting
-Config.InteractionDistance = 2.5    -- Distance to interact with corpses
-Config.LootCooldown = 5000          -- Cooldown in ms (if not deleting peds)
+Config.EnableOnStart = true
+Config.UseTarget = true                  -- Use ox_target for interaction
+Config.InteractionDistance = 2.5         -- Distance to interact with corpses
+
+-- Body Handling (IMPORTANT: State Bags prevent re-looting WITHOUT deletion)
+Config.DeletePedsWhenLooted = false      -- FALSE = Keep body, use State Bags
+Config.UseStateBags = true               -- Sync looted status across all clients
+Config.BodyDespawnTime = 300000          -- 5 minutes before marking for cleanup (if not deleted)
 
 -- Admin Settings
-Config.AdminOnly = false            -- Only admins can toggle system
+Config.AdminOnly = false
 Config.Commands = {
-    toggle = 'pedloot'              -- Command: /pedloot On/Off
+    toggle = 'lootpeds',                 -- /lootpeds on/off
+    reload = 'reloadloot'                -- /reloadloot (admin: reload loot tables)
 }
 
 -- ═══════════════════════════════════════════════════════
--- LOOT SYSTEM CONFIGURATION
+-- LOOTING ANIMATION
 -- ═══════════════════════════════════════════════════════
 
--- Enable/Disable Loot Categories
-Config.UseBasicItems = true
-Config.UseAmmo = true
-Config.UseNormalWeapons = true
-Config.UseHeavyWeapons = true
-Config.UseCash = true
-
--- Loot Chances (0-100 percentage)
-Config.Chances = {
-    Cash = 50,              -- 50% chance to find cash
-    BasicItem = 75,         -- 75% chance to find basic items
-    Ammo = 40,              -- 40% chance to find ammo
-    NormalWeapon = 15,      -- 15% chance to find normal weapons
-    HeavyWeapon = 2         -- 2% chance to find heavy weapons
-}
-
--- Cash Configuration
-Config.Cash = {
-    Min = 25,               -- Minimum cash amount
-    Max = 100,              -- Maximum cash amount
-    Type = 'cash'           -- 'cash' or 'bank'
-}
-
--- ═══════════════════════════════════════════════════════
--- LOOT TABLES
--- ═══════════════════════════════════════════════════════
-
-Config.Items = {
-    Basic = {
-        'tosti',
-        'water',
-        'sandwich',
-        'coffee',
-        'bandage',
-        'phone'
-    },
-    Ammo = {
-        'pistol_ammo',
-        'smg_ammo',
-        'rifle_ammo',
-        'shotgun_ammo',
-        'snp_ammo'
-    },
-    NormalWeapons = {
-        'weapon_knife',
-        'weapon_bat',
-        'weapon_knuckle',
-        'weapon_switchblade',
-        'weapon_combatpistol',
-        'weapon_pistol'
-    },
-    HeavyWeapons = {
-        'weapon_snspistol',
-        'weapon_vintagepistol',
-        'weapon_pumpshotgun',
-        'weapon_smg',
-        'weapon_assaultrifle',
-        'weapon_sniperrifle',
-        'weapon_assaultrifle_mk2'
+Config.Animation = {
+    duration = 3000,                     -- Search time in ms
+    dict = 'amb@medic@standing@kneel@base',
+    clip = 'base',
+    canCancel = true,
+    disable = {
+        move = true,
+        car = true,
+        combat = true
     }
 }
 
 -- ═══════════════════════════════════════════════════════
--- PED MODELS (467 total - civilians, gangs, service workers)
+-- LOOT CATEGORIES
+-- Assign peds to categories based on their model prefix
 -- ═══════════════════════════════════════════════════════
 
-Config.PedModels = {
-    -- Female Civilians
-    "a_f_m_beach_01", "a_f_m_bevhills_01", "a_f_m_bevhills_02", "a_f_m_bodybuild_01",
-    "a_f_m_business_02", "a_f_m_downtown_01", "a_f_m_eastsa_01", "a_f_m_eastsa_02",
-    "a_f_m_fatbla_01", "a_f_m_fatcult_01", "a_f_m_ktown_01", "a_f_m_ktown_02",
-    "a_f_m_prolhost_01", "a_f_m_salton_01", "a_f_m_skidrow_01", "a_f_m_soucent_01",
-    "a_f_m_soucent_02", "a_f_m_soucentmc_01", "a_f_m_tourist_01", "a_f_m_tramp_01",
-    "a_f_m_trampbeac_01", "a_f_o_genstreet_01", "a_f_o_indian_01", "a_f_o_ktown_01",
-    "a_f_o_salton_01", "a_f_o_soucent_01", "a_f_o_soucent_02", "a_f_y_beach_01",
-    "a_f_y_bevhills_01", "a_f_y_bevhills_02", "a_f_y_bevhills_03", "a_f_y_bevhills_04",
-    "a_f_y_business_01", "a_f_y_business_02", "a_f_y_business_03", "a_f_y_business_04",
-    "a_f_y_eastsa_01", "a_f_y_eastsa_02", "a_f_y_eastsa_03", "a_f_y_epsilon_01",
-    "a_f_y_fitness_01", "a_f_y_fitness_02", "a_f_y_genhot_01", "a_f_y_golfer_01",
-    "a_f_y_hiker_01", "a_f_y_hippie_01", "a_f_y_hipster_01", "a_f_y_hipster_02",
-    "a_f_y_hipster_03", "a_f_y_hipster_04", "a_f_y_indian_01", "a_f_y_juggalo_01",
-    "a_f_y_runner_01", "a_f_y_rurmeth_01", "a_f_y_scdressy_01", "a_f_y_skater_01",
-    "a_f_y_soucent_01", "a_f_y_soucent_02", "a_f_y_soucent_03", "a_f_y_tennis_01",
-    "a_f_y_topless_01", "a_f_y_tourist_01", "a_f_y_tourist_02", "a_f_y_vinewood_01",
-    "a_f_y_vinewood_02", "a_f_y_vinewood_03", "a_f_y_vinewood_04", "a_f_y_yoga_01",
-
-    -- Male Civilians (Middle Age)
-    "a_m_m_acult_01", "a_m_m_afriamer_01", "a_m_m_beach_01", "a_m_m_beach_02",
-    "a_m_m_bevhills_01", "a_m_m_bevhills_02", "a_m_m_business_01", "a_m_m_eastsa_01",
-    "a_m_m_eastsa_02", "a_m_m_fatlatin_01", "a_m_m_genfat_01", "a_m_m_genfat_02",
-    "a_m_m_golfer_01", "a_m_m_hasjew_01", "a_m_m_indian_01", "a_m_m_ktown_01",
-    "a_m_m_malibu_01", "a_m_m_mexcntry_01", "a_m_m_mexlabor_01", "a_m_m_og_boss_01",
-    "a_m_m_paparazzi_01", "a_m_m_polynesian_01", "a_m_m_prolhost_01", "a_m_m_rurmeth_01",
-    "a_m_m_salton_01", "a_m_m_salton_02", "a_m_m_salton_03", "a_m_m_salton_04",
-    "a_m_m_skater_01", "a_m_m_skidrow_01", "a_m_m_socenlat_01", "a_m_m_soucent_01",
-    "a_m_m_soucent_02", "a_m_m_soucent_03", "a_m_m_soucent_04", "a_m_m_stlat_02",
-    "a_m_m_tennis_01", "a_m_m_tourist_01", "a_m_m_tramp_01", "a_m_m_trampbeac_01",
-    "a_m_m_tranvest_01", "a_m_m_tranvest_02",
-
-    -- Male Civilians (Old)
-    "a_m_o_acult_01", "a_m_o_acult_02", "a_m_o_beach_01", "a_m_o_genstreet_01",
-    "a_m_o_ktown_01", "a_m_o_salton_01", "a_m_o_soucent_01", "a_m_o_soucent_02",
-    "a_m_o_soucent_03", "a_m_o_tramp_01",
-
-    -- Male Civilians (Young)
-    "a_m_y_acult_01", "a_m_y_acult_02", "a_m_y_beach_01", "a_m_y_beach_02",
-    "a_m_y_beach_03", "a_m_y_beachvesp_01", "a_m_y_beachvesp_02", "a_m_y_bevhills_01",
-    "a_m_y_bevhills_02", "a_m_y_breakdance_01", "a_m_y_busicas_01", "a_m_y_business_01",
-    "a_m_y_business_02", "a_m_y_business_03", "a_m_y_cyclist_01", "a_m_y_dhill_01",
-    "a_m_y_downtown_01", "a_m_y_eastsa_01", "a_m_y_eastsa_02", "a_m_y_epsilon_01",
-    "a_m_y_epsilon_02", "a_m_y_gay_01", "a_m_y_gay_02", "a_m_y_genstreet_01",
-    "a_m_y_genstreet_02", "a_m_y_golfer_01", "a_m_y_hasjew_01", "a_m_y_hiker_01",
-    "a_m_y_hippy_01", "a_m_y_hipster_01", "a_m_y_hipster_02", "a_m_y_hipster_03",
-    "a_m_y_indian_01", "a_m_y_jetski_01", "a_m_y_juggalo_01", "a_m_y_ktown_01",
-    "a_m_y_ktown_02", "a_m_y_latino_01", "a_m_y_methhead_01", "a_m_y_mexthug_01",
-    "a_m_y_motox_01", "a_m_y_motox_02", "a_m_y_musclbeac_01", "a_m_y_musclbeac_02",
-    "a_m_y_polynesian_01", "a_m_y_roadcyc_01", "a_m_y_runner_01", "a_m_y_runner_02",
-    "a_m_y_salton_01", "a_m_y_skater_01", "a_m_y_skater_02", "a_m_y_soucent_01",
-    "a_m_y_soucent_02", "a_m_y_soucent_03", "a_m_y_soucent_04", "a_m_y_stbla_01",
-    "a_m_y_stbla_02", "a_m_y_stlat_01", "a_m_y_stwhi_01", "a_m_y_stwhi_02",
-    "a_m_y_sunbathe_01", "a_m_y_surfer_01", "a_m_y_vindouche_01", "a_m_y_vinewood_01",
-    "a_m_y_vinewood_02", "a_m_y_vinewood_03", "a_m_y_vinewood_04", "a_m_y_yoga_01",
+Config.PedCategories = {
+    -- Police/Security
+    police = {
+        patterns = { 's_m_y_cop', 's_f_y_cop', 's_m_y_sheriff', 's_f_y_sheriff', 's_m_y_hwaycop',
+                     's_m_m_security', 's_m_y_swat', 's_m_m_prisguard', 's_m_m_fiboffice',
+                     's_m_m_ciasec', 's_m_m_chemsec', 's_m_y_devinsec', 'csb_cop' },
+        cash = { min = 50, max = 150, chance = 40 },
+        loot = {
+            { item = 'radio', chance = 60 },
+            { item = 'handcuffs', chance = 40 },
+            { item = 'weapon_flashlight', chance = 50 },
+            { item = 'weapon_nightstick', chance = 30 },
+            { item = 'weapon_stungun', chance = 15 },
+            { item = 'armor', chance = 25 },
+            { item = 'pistol_ammo', chance = 70, amount = { 1, 3 } },
+            { item = 'weapon_pistol', chance = 10 },
+            { item = 'weapon_combatpistol', chance = 5 },
+        }
+    },
 
     -- Gang Members
-    "g_f_importexport_01", "g_f_y_ballas_01", "g_f_y_families_01", "g_f_y_lost_01",
-    "g_f_y_vagos_01", "g_m_importexport_01", "g_m_m_armboss_01", "g_m_m_armgoon_01",
-    "g_m_m_armlieut_01", "g_m_m_chemwork_01", "g_m_m_chiboss_01", "g_m_m_chicold_01",
-    "g_m_m_chigoon_01", "g_m_m_chigoon_02", "g_m_m_korboss_01", "g_m_m_mexboss_01",
-    "g_m_m_mexboss_02", "g_m_y_armgoon_02", "g_m_y_azteca_01", "g_m_y_ballaeast_01",
-    "g_m_y_ballaorig_01", "g_m_y_ballasout_01", "g_m_y_famca_01", "g_m_y_famdnf_01",
-    "g_m_y_famfor_01", "g_m_y_korean_01", "g_m_y_korean_02", "g_m_y_korlieut_01",
-    "g_m_y_lost_01", "g_m_y_lost_02", "g_m_y_lost_03", "g_m_y_mexgang_01",
-    "g_m_y_mexgoon_01", "g_m_y_mexgoon_02", "g_m_y_mexgoon_03", "g_m_y_pologoon_01",
-    "g_m_y_pologoon_02", "g_m_y_salvaboss_01", "g_m_y_salvagoon_01", "g_m_y_salvagoon_02",
-    "g_m_y_salvagoon_03", "g_m_y_strpunk_01", "g_m_y_strpunk_02",
+    gang = {
+        patterns = { 'g_m_', 'g_f_', 'csb_ballasog', 'csb_vagspeak' },
+        cash = { min = 100, max = 500, chance = 70 },
+        loot = {
+            { item = 'weed_brick', chance = 25 },
+            { item = 'coke_brick', chance = 10 },
+            { item = 'meth_bag', chance = 15 },
+            { item = 'joint', chance = 40 },
+            { item = 'lockpick', chance = 35 },
+            { item = 'weapon_knife', chance = 50 },
+            { item = 'weapon_switchblade', chance = 40 },
+            { item = 'weapon_bat', chance = 20 },
+            { item = 'weapon_pistol', chance = 25 },
+            { item = 'weapon_microsmg', chance = 8 },
+            { item = 'pistol_ammo', chance = 60, amount = { 1, 5 } },
+            { item = 'smg_ammo', chance = 30, amount = { 1, 3 } },
+            { item = 'markedbills', chance = 15 },
+            { item = 'goldchain', chance = 10 },
+        }
+    },
 
-    -- Multiplayer Peds
-    "mp_f_boatstaff_01", "mp_f_cardesign_01", "mp_f_chbar_01", "mp_f_cocaine_01",
-    "mp_f_counterfeit_01", "mp_f_deadhooker", "mp_f_execpa_01", "mp_f_forgery_01",
-    "mp_f_freemode_01", "mp_f_helistaff_01", "mp_f_meth_01", "mp_f_misty_01",
-    "mp_f_stripperlite", "mp_f_weed_01", "mp_g_m_pros_01", "mp_headtargets",
-    "mp_m_boatstaff_01", "mp_m_claude_01", "mp_m_cocaine_01", "mp_m_counterfeit_01",
-    "mp_m_exarmy_01", "mp_m_execpa_01", "mp_m_famdd_01", "mp_m_fibsec_01",
-    "mp_m_forgery_01", "mp_m_freemode_01", "mp_m_g_vagfun_01", "mp_m_marston_01",
-    "mp_m_meth_01", "mp_m_niko_01", "mp_m_securoguard_01", "mp_m_shopkeep_01",
-    "mp_m_waremech_01", "mp_m_weed_01", "mp_s_m_armoured_01",
+    -- Medical/EMS
+    medical = {
+        patterns = { 's_m_m_paramedic', 's_f_y_scrubs', 's_m_y_autopsy', 'csb_trafficwarden' },
+        cash = { min = 30, max = 100, chance = 50 },
+        loot = {
+            { item = 'bandage', chance = 80 },
+            { item = 'firstaid', chance = 40 },
+            { item = 'painkillers', chance = 60 },
+            { item = 'ifak', chance = 20 },
+            { item = 'medkit', chance = 10 },
+            { item = 'phone', chance = 50 },
+        }
+    },
 
-    -- Service Workers (Female)
-    "s_f_m_fembarber", "s_f_m_maid_01", "s_f_m_shop_high", "s_f_m_sweatshop_01",
-    "s_f_y_airhostess_01", "s_f_y_bartender_01", "s_f_y_baywatch_01", "s_f_y_cop_01",
-    "s_f_y_factory_01", "s_f_y_hooker_01", "s_f_y_hooker_02", "s_f_y_hooker_03",
-    "s_f_y_migrant_01", "s_f_y_movprem_01", "s_f_y_ranger_01", "s_f_y_scrubs_01",
-    "s_f_y_sheriff_01", "s_f_y_shop_low", "s_f_y_shop_mid", "s_f_y_stripper_01",
-    "s_f_y_stripper_02", "s_f_y_stripperlite", "s_f_y_sweatshop_01",
+    -- Construction/Industrial Workers
+    worker = {
+        patterns = { 's_m_y_construct', 's_m_y_dockwork', 's_m_m_gardener', 's_m_m_trucker',
+                     's_m_y_garbage', 's_m_m_ups', 's_m_y_xmech', 's_m_m_autoshop' },
+        cash = { min = 20, max = 80, chance = 60 },
+        loot = {
+            { item = 'weapon_wrench', chance = 50 },
+            { item = 'weapon_hammer', chance = 40 },
+            { item = 'screwdriverset', chance = 35 },
+            { item = 'repairkit', chance = 20 },
+            { item = 'duct_tape', chance = 45 },
+            { item = 'metalscrap', chance = 60 },
+            { item = 'plastic', chance = 40 },
+            { item = 'sandwich', chance = 70 },
+            { item = 'coffee', chance = 65 },
+        }
+    },
 
-    -- Service Workers (Male)
-    "s_m_m_ammucountry", "s_m_m_armoured_01", "s_m_m_armoured_02", "s_m_m_autoshop_01",
-    "s_m_m_autoshop_02", "s_m_m_bouncer_01", "s_m_m_chemsec_01", "s_m_m_ciasec_01",
-    "s_m_m_cntrybar_01", "s_m_m_fiboffice_01", "s_m_m_fiboffice_02", "s_m_m_gaffer_01",
-    "s_m_m_gardener_01", "s_m_m_gentransport", "s_m_m_hairdress_01", "s_m_m_janitor",
-    "s_m_m_lathandy_01", "s_m_m_lifeinvad_01", "s_m_m_linecook", "s_m_m_lsmetro_01",
-    "s_m_m_mariachi_01", "s_m_m_marine_01", "s_m_m_marine_02", "s_m_m_migrant_01",
-    "s_m_m_movalien_01", "s_m_m_movprem_01", "s_m_m_movspace_01", "s_m_m_paramedic_01",
-    "s_m_m_pilot_01", "s_m_m_pilot_02", "s_m_m_postal_01", "s_m_m_postal_02",
-    "s_m_m_prisguard_01", "s_m_m_scientist_01", "s_m_m_security_01", "s_m_m_snowcop_01",
-    "s_m_m_strperf_01", "s_m_m_strpreach_01", "s_m_m_trucker_01", "s_m_m_ups_01",
-    "s_m_m_ups_02", "s_m_y_armymech_01", "s_m_y_autopsy_01", "s_m_y_barman_01",
-    "s_m_y_baywatch_01", "s_m_y_blackops_01", "s_m_y_blackops_02", "s_m_y_chef_01",
-    "s_m_y_clown_01", "s_m_y_construct_01", "s_m_y_construct_02", "s_m_y_cop_01",
-    "s_m_y_dealer_01", "s_m_y_devinsec_01", "s_m_y_dockwork_01", "s_m_y_doorman_01",
-    "s_m_y_dwservice_01", "s_m_y_dwservice_02", "s_m_y_factory_01", "s_m_y_fireman_01",
-    "s_m_y_garbage", "s_m_y_grip_01", "s_m_y_hwaycop_01", "s_m_y_marine_01",
-    "s_m_y_marine_02", "s_m_y_marine_03", "s_m_y_mime", "s_m_y_pestcont_01",
-    "s_m_y_pilot_01", "s_m_y_prismuscl_01", "s_m_y_prisoner_01", "s_m_y_ranger_01",
-    "s_m_y_robber_01", "s_m_y_sheriff_01", "s_m_y_shop_mask", "s_m_y_strvend_01",
-    "s_m_y_swat_01", "s_m_y_uscg_01", "s_m_y_valet_01", "s_m_y_waiter_01",
-    "s_m_y_winclean_01", "s_m_y_xmech_01", "s_m_y_xmech_02", "s_m_y_xmech_02_mp",
+    -- Beach/Tourist
+    beach = {
+        patterns = { 'a_m_y_beach', 'a_f_y_beach', 'a_m_y_surfer', 'a_f_y_topless',
+                     'a_m_y_sunbathe', 's_m_y_baywatch', 's_f_y_baywatch', 'a_m_y_jetski' },
+        cash = { min = 10, max = 50, chance = 40 },
+        loot = {
+            { item = 'water', chance = 80 },
+            { item = 'sunscreen', chance = 50 },
+            { item = 'phone', chance = 60 },
+            { item = 'sandwich', chance = 40 },
+            { item = 'joint', chance = 15 },
+        }
+    },
 
-    -- Unique Peds
-    "u_f_m_corpse_01", "u_f_m_miranda", "u_f_m_promourn_01", "u_f_o_moviestar",
-    "u_f_o_prolhost_01", "u_f_y_bikerchic", "u_f_y_comjane", "u_f_y_corpse_01",
-    "u_f_y_corpse_02", "u_f_y_hotposh_01", "u_f_y_jewelass_01", "u_f_y_mistress",
-    "u_f_y_poppymich", "u_f_y_princess", "u_f_y_spyactress", "u_m_m_aldinapoli",
-    "u_m_m_bankman", "u_m_m_bikehire_01", "u_m_m_fibarchitect", "u_m_m_glenstank_01",
-    "u_m_m_griff_01", "u_m_m_jesus_01", "u_m_m_jewelsec_01", "u_m_m_jewelthief",
-    "u_m_m_markfost", "u_m_m_partytarget", "u_m_m_prolsec_01", "u_m_m_promourn_01",
-    "u_m_m_rivalpap", "u_m_m_spyactor", "u_m_m_willyfist", "u_m_o_finguru_01",
-    "u_m_o_taphillbilly", "u_m_o_tramp_01", "u_m_y_abner", "u_m_y_antonb",
-    "u_m_y_babyd", "u_m_y_baygor", "u_m_y_burgerdrug_01", "u_m_y_chip",
-    "u_m_y_cyclist_01", "u_m_y_fibmugger_01", "u_m_y_guido_01", "u_m_y_gunvend_01",
-    "u_m_y_hippie_01", "u_m_y_imporage", "u_m_y_justin", "u_m_y_mani",
-    "u_m_y_militarybum", "u_m_y_paparazzi", "u_m_y_party_01", "u_m_y_pogo_01",
-    "u_m_y_prisoner_01", "u_m_y_proldriver_01", "u_m_y_rsranger_01", "u_m_y_sbike",
-    "u_m_y_staggrm_01", "u_m_y_tattoo_01", "u_m_y_zombie_01"
+    -- Business/Rich
+    business = {
+        patterns = { 'a_m_y_business', 'a_f_y_business', 'a_m_m_business', 'a_f_m_business',
+                     'a_m_y_bevhills', 'a_f_y_bevhills', 'a_m_m_bevhills', 'a_f_m_bevhills',
+                     'a_m_y_vinewood', 'a_f_y_vinewood', 'u_m_m_bankman', 'ig_bankman' },
+        cash = { min = 200, max = 800, chance = 80 },
+        loot = {
+            { item = 'phone', chance = 90 },
+            { item = 'rolex', chance = 15 },
+            { item = 'goldchain', chance = 10 },
+            { item = 'diamond_ring', chance = 5 },
+            { item = 'creditcard', chance = 40 },
+            { item = 'wallet', chance = 70 },
+            { item = 'cigar', chance = 25 },
+        }
+    },
+
+    -- Homeless/Vagrant
+    homeless = {
+        patterns = { 'a_m_m_tramp', 'a_f_m_tramp', 'a_m_o_tramp', 'a_m_m_skidrow',
+                     'a_f_m_skidrow', 'u_m_o_tramp', 'a_m_y_methhead' },
+        cash = { min = 1, max = 15, chance = 20 },
+        loot = {
+            { item = 'water', chance = 30 },
+            { item = 'burger', chance = 25 },
+            { item = 'weapon_bottle', chance = 60 },
+            { item = 'lighter', chance = 70 },
+            { item = 'joint', chance = 35 },
+            { item = 'meth_bag', chance = 20 },
+            { item = 'crackpipe', chance = 25 },
+        }
+    },
+
+    -- Military
+    military = {
+        patterns = { 's_m_m_marine', 's_m_y_marine', 's_m_y_armymech', 's_m_y_blackops',
+                     's_m_m_pilot_01', 's_m_m_pilot_02' },
+        cash = { min = 50, max = 200, chance = 30 },
+        loot = {
+            { item = 'armor', chance = 50 },
+            { item = 'weapon_combatpistol', chance = 30 },
+            { item = 'weapon_carbinerifle', chance = 10 },
+            { item = 'rifle_ammo', chance = 60, amount = { 2, 5 } },
+            { item = 'pistol_ammo', chance = 70, amount = { 2, 4 } },
+            { item = 'radio', chance = 50 },
+            { item = 'mre', chance = 40 },
+            { item = 'bandage', chance = 60 },
+        }
+    },
+
+    -- Default (regular civilians)
+    default = {
+        patterns = {}, -- Fallback for unmatched peds
+        cash = { min = 10, max = 75, chance = 50 },
+        loot = {
+            { item = 'phone', chance = 60 },
+            { item = 'wallet', chance = 50 },
+            { item = 'water', chance = 40 },
+            { item = 'sandwich', chance = 35 },
+            { item = 'cigarette', chance = 30 },
+            { item = 'lighter', chance = 35 },
+            { item = 'bandage', chance = 15 },
+            { item = 'lockpick', chance = 5 },
+            { item = 'weapon_knife', chance = 8 },
+        }
+    }
+}
+
+-- ═══════════════════════════════════════════════════════
+-- CASH SETTINGS
+-- ═══════════════════════════════════════════════════════
+
+Config.Cash = {
+    Type = 'cash',      -- 'cash' or 'bank'
+    Dirty = false,      -- Use dirty money instead (if your server has it)
+    DirtyItem = 'markedbills'  -- Item name for dirty money
+}
+
+-- ═══════════════════════════════════════════════════════
+-- POLICE INTEGRATION (Optional)
+-- ═══════════════════════════════════════════════════════
+
+Config.PoliceIntegration = {
+    enabled = false,                     -- Enable police alerts
+    alertOnLoot = true,                  -- Alert police when someone loots a body
+    policeJobs = { 'police', 'bcso', 'sasp', 'sahp', 'lspd' },
+    minPoliceOnline = 2,                 -- Minimum police needed for alerts
+    alertChance = 25,                    -- % chance to trigger alert
+}
+
+-- ═══════════════════════════════════════════════════════
+-- EVIDENCE SYSTEM (Optional - for ps-evidence/qb-evidence)
+-- ═══════════════════════════════════════════════════════
+
+Config.Evidence = {
+    enabled = false,                     -- Leave evidence when looting
+    fingerprints = true,                 -- Leave fingerprints on body
+    dna = false,                         -- Leave DNA (requires gloves check)
+}
+
+-- ═══════════════════════════════════════════════════════
+-- RESTRICT LOOTING
+-- ═══════════════════════════════════════════════════════
+
+Config.Restrictions = {
+    requireItem = false,                 -- Require an item to loot
+    requiredItem = 'lockpick',           -- Item needed
+    consumeItem = false,                 -- Consume the item when looting
+
+    -- Ped model blacklist (cannot loot these)
+    blacklistedPeds = {
+        -- Main story characters
+        'player_zero',      -- Michael
+        'player_one',       -- Franklin
+        'player_two',       -- Trevor
+        -- Add any other peds you don't want looted
+    },
+
+    -- Only allow looting if player has certain jobs
+    jobRestricted = false,
+    allowedJobs = { 'unemployed' },      -- If restricted, only these jobs can loot
+}
+
+-- ═══════════════════════════════════════════════════════
+-- PED MODELS - Full list for ox_target
+-- These are all peds that CAN be looted
+-- ═══════════════════════════════════════════════════════
+
+Config.UseAllPeds = true                 -- If true, allows looting any dead NPC ped
+
+-- If UseAllPeds is false, only these specific models can be looted
+Config.PedModels = {
+    -- Add specific models here if UseAllPeds = false
+    -- Example: "a_m_y_hipster_01", "g_m_y_ballasout_01"
 }
