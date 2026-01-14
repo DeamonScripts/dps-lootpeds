@@ -1,4 +1,4 @@
-# DSRP Loot Peds
+# DPSRP Loot Peds
 
 **QBox/ox_lib Compatible Dead Ped Looting System**
 
